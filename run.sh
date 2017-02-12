@@ -1,4 +1,4 @@
 #!/bin/sh
 
-classpath=/Users/matthart/eclipse_workspace/TermFrequency/bin
-java -cp /Users/matthart/eclipse_workspace/TermFrequency/bin termfrequncy/TermFrequencyRunner "$@"
+classpath="`dirname $0`/bin"
+java -cp $classpath termfrequncy.TermFrequencyRunner "$@"
