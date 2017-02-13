@@ -27,24 +27,28 @@ public class TermFrequencyRunner {
     }
     Set<String> terms = flags.get(TERMS_FLAG_NAME);
     Set<String> fileNames = flags.get(FILES_FLAG_NAME);
-    
+
     Map<String, FileFrequency> fileFrequencyByTerm = new HashMap<>();
     for (String fileName : fileNames) {
       Path filePath = FileSystems.getDefault().getPath(fileName);
-      List<TermFrequency> termFrequencies = computeTermFrequencies(terms, filePath);
-      for (TermFrequency termFrequency : termFrequencies) {
-        FileFrequency newFileFrequency = new FileFrequency(filePath, termFrequency.frequency());
+      Map<String, Double> termFrequencies = computeTermFrequencies(terms, filePath);
+      for (Entry<String, Double> entry : termFrequencies.entrySet()) {
+    	String term = entry.getKey();
+    	Double frequency = entry.getValue();
+        FileFrequency newFileFrequency = new FileFrequency(filePath, frequency);
+        // If present, compare new FileFrequency to old FileFrequency.
         fileFrequencyByTerm
           .computeIfPresent(
-            termFrequency.term(),
+            term,
             (key, oldFileFrequency) -> maxFileFrequncy(newFileFrequency, oldFileFrequency));
-        fileFrequencyByTerm.putIfAbsent(termFrequency.term(), newFileFrequency);
+        // If absent, add new FileFrequency.
+        fileFrequencyByTerm.putIfAbsent(term, newFileFrequency);
       }
     }
     System.out.println(format(fileFrequencyByTerm));
   }
   
-  private static List<TermFrequency> computeTermFrequencies(Set<String> terms, Path filePath) {
+  private static Map<String, Double> computeTermFrequencies(Set<String> terms, Path filePath) {
     Map<String, Integer> termCounts = terms
         .stream()
         .collect(Collectors.toMap(Function.identity(), a -> 0));
@@ -60,17 +64,18 @@ public class TermFrequencyRunner {
       }
     } catch (IOException e) {
     System.out.println(String.format("Problem reading file: %s. Omitting from results.", filePath));
-    return new ArrayList<>();
+    return new HashMap<>();
     }
 
-    final double doubleCount = (double) totalCount;
+    final double floatingPointCount = (double) totalCount;
     return termCounts
-        .entrySet()
-        .stream()
-        .map(entry -> new TermFrequency(entry.getKey(), entry.getValue().doubleValue() / doubleCount))
-        .collect(Collectors.toList());
+      .entrySet()
+      .stream()
+      .collect(Collectors.toMap(
+        entry -> entry.getKey(),
+        entry -> entry.getValue().doubleValue() / floatingPointCount));
   }
-  
+
   private static List<String> splitAndCleanLine(String line) {
     List<String> words = new ArrayList<>();
     StringBuilder wordBuilder = new StringBuilder(); 
@@ -91,7 +96,7 @@ public class TermFrequencyRunner {
   private static FileFrequency maxFileFrequncy(FileFrequency tf1, FileFrequency tf2) {
     return tf1.frequency() > tf2.frequency() ? tf1 : tf2;
   }
-  
+
   private static String format(Map<String, FileFrequency> fileFrequencyByTerm) {
     StringBuilder sb = new StringBuilder();
     for (Entry<String, FileFrequency> entry : fileFrequencyByTerm.entrySet()) {
